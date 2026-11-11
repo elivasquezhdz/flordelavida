@@ -10,6 +10,13 @@ import {
 
 const SHARED_SPHERE = new THREE.SphereGeometry(1, 48, 32);
 
+// Planos ortogonales: (x, y) del plano → punto 3D.
+const PLANES = [
+  (x, y) => ({ x, y, z: 0 }), // XY
+  (x, y) => ({ x, y: 0, z: y }), // XZ
+  (x, y) => ({ x: 0, y: x, z: y }), // YZ
+];
+
 const LAYOUTS = {
   plane: planeCenters,
   planes3: threePlaneCenters,
@@ -59,7 +66,10 @@ export class View3D {
     return LAYOUTS[layout](rings).length;
   }
 
-  render({ rings, layout, color, opacity, wire, centers, spin, metatron, solids, solidSize, stroke, ortho }) {
+  render({
+    rings, layout, color, opacity, wire, centers, spin, metatron, metatron3, solids, sizes, stroke, ortho,
+    vertexSpheres,
+  }) {
     this.controls.autoRotate = spin;
     this.setOrtho(ortho);
     disposeChildren(this.group);
@@ -76,52 +86,7 @@ export class View3D {
       return c.setHSL((hsl.h + t * 0.08) % 1, hsl.s, Math.min(0.9, hsl.l + (0.5 - t) * 0.15));
     };
 
-    // Esferas translúcidas (instanciadas).
-    const mat = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity,
-      roughness: 0.25,
-      metalness: 0.1,
-      clearcoat: 0.6,
-      depthWrite: opacity > 0.95,
-      side: THREE.DoubleSide,
-    });
-    const mesh = new THREE.InstancedMesh(this.sphereGeo, mat, pts.length);
-    const m = new THREE.Matrix4();
-    pts.forEach((p, i) => {
-      m.makeTranslation(p.x, p.y, p.z);
-      mesh.setMatrixAt(i, m);
-      mesh.setColorAt(i, colorFor(p.ring));
-    });
-    this.group.add(mesh);
-
-    // Malla: meridianos y paralelos de cada esfera, en una sola geometría.
-    if (wire) {
-      const tpl = this.wireTemplate;
-      const pos = new Float32Array(tpl.length * pts.length);
-      const col = new Float32Array(tpl.length * pts.length);
-      pts.forEach((p, i) => {
-        const c = colorFor(p.ring);
-        const off = i * tpl.length;
-        for (let v = 0; v < tpl.length; v += 3) {
-          pos[off + v] = tpl[v] + p.x;
-          pos[off + v + 1] = tpl[v + 1] + p.y;
-          pos[off + v + 2] = tpl[v + 2] + p.z;
-          col[off + v] = c.r;
-          col[off + v + 1] = c.g;
-          col[off + v + 2] = c.b;
-        }
-      });
-      const g = new THREE.BufferGeometry();
-      g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-      g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-      const lines = new THREE.LineSegments(
-        g,
-        new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55 }),
-      );
-      this.group.add(lines);
-    }
+    this.addSpheres(pts, (p) => colorFor(p.ring), opacity, wire);
 
     if (centers) {
       const g = new THREE.BufferGeometry();
@@ -132,13 +97,30 @@ export class View3D {
     this.lineMaterials = [];
     let radius = Math.max(...pts.map((p) => Math.hypot(p.x, p.y, p.z))) + 1;
     if (metatron) {
-      this.group.add(this.metatron(stroke));
+      // El Cubo de Metatrón en el plano XY y, opcionalmente, en XZ e YZ.
+      const planes = metatron3 ? PLANES : PLANES.slice(0, 1);
+      const white = new THREE.Color(0xe8e6df);
+      for (const toPlane of planes) {
+        this.group.add(this.metatron(stroke, toPlane));
+        const spheres = metatronCenters().map((c) => toPlane(c.x, c.y));
+        this.addSpheres(spheres, () => white, opacity * 0.8, wire);
+      }
       radius = Math.max(radius, 5);
     }
     for (const kind of solids) {
-      const { vertices, edges } = platonicSolid(kind, solidSize);
-      this.group.add(this.solid(vertices, edges, SOLIDS[kind].color, stroke));
-      radius = Math.max(radius, ...vertices.map((v) => Math.hypot(...v)));
+      for (const size of sizes) {
+        const { vertices, edges } = platonicSolid(kind, size);
+        const color = new THREE.Color(SOLIDS[kind].color);
+        this.group.add(this.solid(vertices, edges, color, stroke));
+        let reach = Math.max(...vertices.map((v) => Math.hypot(...v)));
+        if (vertexSpheres) {
+          // Una esfera en cada vértice: el sólido construido con esferas.
+          const spheres = vertices.map(([x, y, z]) => ({ x, y, z }));
+          this.addSpheres(spheres, () => color, opacity, wire);
+          reach += 1;
+        }
+        radius = Math.max(radius, reach);
+      }
     }
     this.updateLineResolution();
 
@@ -194,17 +176,64 @@ export class View3D {
     return new LineSegments2(geo, mat);
   }
 
-  metatron(stroke) {
+  /** Esferas translúcidas instanciadas (y su malla opcional). */
+  addSpheres(pts, colorOf, opacity, wire) {
+    const mat = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity,
+      roughness: 0.25,
+      metalness: 0.1,
+      clearcoat: 0.6,
+      depthWrite: opacity > 0.95,
+      side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.InstancedMesh(this.sphereGeo, mat, pts.length);
+    const m = new THREE.Matrix4();
+    pts.forEach((p, i) => {
+      mesh.setMatrixAt(i, m.makeTranslation(p.x, p.y, p.z));
+      mesh.setColorAt(i, colorOf(p));
+    });
+    this.group.add(mesh);
+
+    // Malla: meridianos y paralelos de cada esfera, en una sola geometría.
+    if (!wire) return;
+    const tpl = this.wireTemplate;
+    const pos = new Float32Array(tpl.length * pts.length);
+    const col = new Float32Array(tpl.length * pts.length);
+    pts.forEach((p, i) => {
+      const c = colorOf(p);
+      const off = i * tpl.length;
+      for (let v = 0; v < tpl.length; v += 3) {
+        pos[off + v] = tpl[v] + p.x;
+        pos[off + v + 1] = tpl[v + 1] + p.y;
+        pos[off + v + 2] = tpl[v + 2] + p.z;
+        col[off + v] = c.r;
+        col[off + v + 1] = c.g;
+        col[off + v + 2] = c.b;
+      }
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    this.group.add(new THREE.LineSegments(
+      g,
+      new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55 }),
+    ));
+  }
+
+  metatron(stroke, toPlane) {
     const g = new THREE.Group();
     const centers = metatronCenters();
-    const pos = metatronLines().flatMap(([a, b]) => [a.x, a.y, 0, b.x, b.y, 0]);
+    const P = (x, y) => { const p = toPlane(x, y); return [p.x, p.y, p.z]; };
+    const pos = metatronLines().flatMap(([a, b]) => [...P(a.x, a.y), ...P(b.x, b.y)]);
     g.add(this.lines(pos, 0xe8e6df, stroke * 0.8, 0.8));
     const ring = [];
     const segs = 64;
     for (const c of centers) {
       for (let s = 0; s < segs; s++) {
         const t0 = (s / segs) * 2 * Math.PI, t1 = ((s + 1) / segs) * 2 * Math.PI;
-        ring.push(c.x + Math.cos(t0), c.y + Math.sin(t0), 0, c.x + Math.cos(t1), c.y + Math.sin(t1), 0);
+        ring.push(...P(c.x + Math.cos(t0), c.y + Math.sin(t0)), ...P(c.x + Math.cos(t1), c.y + Math.sin(t1)));
       }
     }
     g.add(this.lines(ring, 0xe8e6df, stroke * 1.2, 0.9));

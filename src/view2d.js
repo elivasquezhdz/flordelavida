@@ -8,7 +8,7 @@ export class View2D {
     this.animating = null;
   }
 
-  render({ rings, color, stroke, outer, centers, metatron, solids, solidSize, hidden }) {
+  render({ rings, color, stroke, outer, centers, metatron, solids, sizes, hidden }) {
     const svg = this.svg;
     svg.replaceChildren();
 
@@ -18,7 +18,7 @@ export class View2D {
     const pad = 0.25;
     let reach = extent;
     if (metatron) reach = Math.max(reach, 5);
-    if (solids.length) reach = Math.max(reach, solidSize);
+    if (solids.length) reach = Math.max(reach, ...sizes);
     const R = reach + pad;
     svg.setAttribute("viewBox", `${-R} ${-R} ${2 * R} ${2 * R}`);
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
@@ -49,7 +49,7 @@ export class View2D {
     svg.append(g);
 
     if (metatron) svg.append(drawMetatron(stroke));
-    for (const kind of solids) svg.append(drawSolid(kind, solidSize, stroke, hidden));
+    for (const kind of solids) for (const size of sizes) svg.append(drawSolid(kind, size, stroke, hidden));
 
     if (centers) {
       const dots = el("g", { fill: color });
