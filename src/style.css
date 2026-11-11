@@ -33,7 +33,7 @@ h1 { margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: 0.02em; }
 .tabs { display: flex; gap: 4px; background: var(--panel); padding: 4px; border-radius: 8px; }
 .tab {
   background: transparent; color: var(--muted); border: 0; padding: 6px 12px;
-  border-radius: 6px; cursor: pointer; font: inherit; font-size: 0.9rem;
+  border-radius: 6px; cursor: pointer; font: inherit; font-size: 0.9rem; white-space: nowrap;
 }
 .tab.active { background: var(--border); color: var(--text); }
 
@@ -56,16 +56,23 @@ main { flex: 1; display: flex; min-height: 0; }
 }
 .panel button { cursor: pointer; }
 .panel button:hover { border-color: var(--accent); }
+.panel h2 { margin: 4px 0 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .hint { margin: 0; font-size: 0.78rem; color: var(--muted); }
 
 body[data-mode="2d"] .only-3d,
 body[data-mode="3d"] .only-2d { display: none; }
 
-.stage { flex: 1; position: relative; min-width: 0; }
+.stage { flex: 1; position: relative; min-width: 0; overflow: hidden; }
+/* El canvas siempre ocupa el contenedor (en pantallas HiDPI su tamaño
+   interno es mayor que el de CSS). */
+#view3d canvas { display: block; width: 100%; height: 100%; }
 #view2d, #view3d { position: absolute; inset: 0; width: 100%; height: 100%; }
 #view2d[hidden], #view3d[hidden] { display: none; }
 
 @media (max-width: 720px) {
+  h1 { font-size: 1rem; white-space: nowrap; }
+  .tab { padding: 6px 8px; font-size: 0.8rem; }
   main { flex-direction: column-reverse; }
   .panel { width: 100%; max-height: 42vh; border-right: 0; border-top: 1px solid var(--border); }
   .stage { min-height: 50vh; }

@@ -1,6 +1,14 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { planeCenters, threePlaneCenters, fccCenters } from "./geometry.js";
+import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import {
+  planeCenters, threePlaneCenters, fccCenters,
+  metatronCenters, metatronLines, platonicSolid, SOLIDS,
+} from "./geometry.js";
+
+const SHARED_SPHERE = new THREE.SphereGeometry(1, 48, 32);
 
 const LAYOUTS = {
   plane: planeCenters,
@@ -16,8 +24,12 @@ export class View3D {
     container.append(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000);
-    this.camera.position.set(4, 3, 6);
+    // Perspectiva para explorar; ortográfica para ver proyecciones exactas.
+    this.perspCamera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000);
+    this.orthoCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 1000);
+    this.camera = this.perspCamera;
+    // Vista casi frontal: el plano de la flor (XY) mirando a la cámara.
+    this.camera.position.set(0.45, 0.3, 1).normalize();
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
@@ -34,7 +46,7 @@ export class View3D {
     this.group = new THREE.Group();
     this.scene.add(this.group);
 
-    this.sphereGeo = new THREE.SphereGeometry(1, 48, 32);
+    this.sphereGeo = SHARED_SPHERE;
     this.wireTemplate = sphereWire(8, 7, 48);
 
     new ResizeObserver(() => this.resize()).observe(container);
@@ -47,8 +59,9 @@ export class View3D {
     return LAYOUTS[layout](rings).length;
   }
 
-  render({ rings, layout, color, opacity, wire, centers, spin }) {
+  render({ rings, layout, color, opacity, wire, centers, spin, metatron, solids, solidSize, stroke, ortho }) {
     this.controls.autoRotate = spin;
+    this.setOrtho(ortho);
     disposeChildren(this.group);
 
     const pts = LAYOUTS[layout](rings);
@@ -116,15 +129,106 @@ export class View3D {
       this.group.add(new THREE.Points(g, new THREE.PointsMaterial({ color: base, size: 0.08 })));
     }
 
-    // Encuadre: alejar la cámara según el tamaño de la figura.
-    const radius = Math.max(...pts.map((p) => Math.hypot(p.x, p.y, p.z))) + 1;
-    if (radius !== this.lastRadius) {
-      const dir = this.camera.position.clone().sub(this.controls.target).normalize();
-      const dist = radius / Math.sin(THREE.MathUtils.degToRad(this.camera.fov / 2)) * 1.05;
-      this.camera.position.copy(dir.multiplyScalar(dist));
-      this.controls.target.set(0, 0, 0);
-      this.lastRadius = radius;
+    this.lineMaterials = [];
+    let radius = Math.max(...pts.map((p) => Math.hypot(p.x, p.y, p.z))) + 1;
+    if (metatron) {
+      this.group.add(this.metatron(stroke));
+      radius = Math.max(radius, 5);
     }
+    for (const kind of solids) {
+      const { vertices, edges } = platonicSolid(kind, solidSize);
+      this.group.add(this.solid(vertices, edges, SOLIDS[kind].color, stroke));
+      radius = Math.max(radius, ...vertices.map((v) => Math.hypot(...v)));
+    }
+    this.updateLineResolution();
+
+    // Encuadre: alejar la cámara sólo cuando cambia el tamaño de la figura.
+    if (Math.abs(radius - (this.lastRadius ?? 0)) > 1e-6) {
+      this.lastRadius = radius;
+      this.frame(this.camera.position.clone().sub(this.controls.target));
+    }
+  }
+
+  setOrtho(on) {
+    const next = on ? this.orthoCamera : this.perspCamera;
+    if (next === this.camera) return;
+    const dir = this.camera.position.clone().sub(this.controls.target);
+    this.camera = next;
+    this.controls.object = next;
+    if (this.lastRadius) this.frame(dir);
+  }
+
+  /** Coloca la cámara en la dirección `dir` a la distancia que encuadra la figura. */
+  frame(dir) {
+    const r = this.lastRadius * 1.08;
+    const aspect = this.aspect ?? 1;
+    const vfov = THREE.MathUtils.degToRad(this.perspCamera.fov);
+    const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
+    const dist = r / Math.sin(Math.min(vfov, hfov) / 2);
+
+    for (const cam of [this.perspCamera, this.orthoCamera]) {
+      cam.near = dist / 100;
+      cam.far = dist * 10;
+    }
+    const o = this.orthoCamera;
+    const half = aspect >= 1 ? r : r / aspect;
+    Object.assign(o, { top: half, bottom: -half, left: -half * aspect, right: half * aspect, zoom: 1 });
+
+    this.controls.target.set(0, 0, 0);
+    this.camera.position.copy(dir.normalize().multiplyScalar(dist));
+    this.camera.up.set(0, 1, 0);
+    this.perspCamera.updateProjectionMatrix();
+    this.orthoCamera.updateProjectionMatrix();
+    this.controls.update();
+  }
+
+  /** Vista frontal: lo que se ve coincide con la proyección 2D. */
+  frontView() {
+    this.frame(new THREE.Vector3(0, 0, 1));
+  }
+
+  lines(positions, color, width, opacity = 1) {
+    const geo = new LineSegmentsGeometry().setPositions(positions);
+    const mat = new LineMaterial({ color, linewidth: width, transparent: opacity < 1, opacity });
+    this.lineMaterials.push(mat);
+    return new LineSegments2(geo, mat);
+  }
+
+  metatron(stroke) {
+    const g = new THREE.Group();
+    const centers = metatronCenters();
+    const pos = metatronLines().flatMap(([a, b]) => [a.x, a.y, 0, b.x, b.y, 0]);
+    g.add(this.lines(pos, 0xe8e6df, stroke * 0.8, 0.8));
+    const ring = [];
+    const segs = 64;
+    for (const c of centers) {
+      for (let s = 0; s < segs; s++) {
+        const t0 = (s / segs) * 2 * Math.PI, t1 = ((s + 1) / segs) * 2 * Math.PI;
+        ring.push(c.x + Math.cos(t0), c.y + Math.sin(t0), 0, c.x + Math.cos(t1), c.y + Math.sin(t1), 0);
+      }
+    }
+    g.add(this.lines(ring, 0xe8e6df, stroke * 1.2, 0.9));
+    return g;
+  }
+
+  solid(vertices, edges, color, stroke) {
+    const g = new THREE.Group();
+    const pos = edges.flatMap((e) => [...vertices[e.a], ...vertices[e.b]]);
+    g.add(this.lines(pos, color, stroke * 2));
+    const dots = new THREE.InstancedMesh(
+      new THREE.SphereGeometry(0.07, 16, 12),
+      new THREE.MeshBasicMaterial({ color }),
+      vertices.length,
+    );
+    const m = new THREE.Matrix4();
+    vertices.forEach((v, i) => dots.setMatrixAt(i, m.makeTranslation(...v)));
+    g.add(dots);
+    return g;
+  }
+
+  updateLineResolution() {
+    const size = this.renderer.getSize(new THREE.Vector2());
+    for (const mat of this.lineMaterials ?? []) mat.resolution.copy(size);
   }
 
   start() {
@@ -148,8 +252,15 @@ export class View3D {
     const { clientWidth: w, clientHeight: h } = this.container;
     if (!w || !h) return;
     this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
+    this.aspect = w / h;
+    this.perspCamera.aspect = this.aspect;
+    this.perspCamera.updateProjectionMatrix();
+    // La cámara ortográfica conserva su altura y ajusta el ancho.
+    const o = this.orthoCamera;
+    o.left = o.bottom * this.aspect;
+    o.right = o.top * this.aspect;
+    o.updateProjectionMatrix();
+    this.updateLineResolution();
   }
 }
 
@@ -182,8 +293,9 @@ function sphereWire(meridians, parallels, segs) {
 function disposeChildren(group) {
   for (const child of [...group.children]) {
     group.remove(child);
-    if (child.geometry && !child.isInstancedMesh) child.geometry.dispose();
-    child.material?.dispose();
-    child.dispose?.();
+    child.traverse((o) => {
+      if (o.geometry && o.geometry !== SHARED_SPHERE) o.geometry.dispose();
+      o.material?.dispose();
+    });
   }
 }

@@ -1,4 +1,4 @@
-import { hexCenters } from "./geometry.js";
+import { hexCenters, metatronCenters, metatronLines, platonicSolid, SOLIDS } from "./geometry.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -8,7 +8,7 @@ export class View2D {
     this.animating = null;
   }
 
-  render({ rings, color, stroke, outer, centers }) {
+  render({ rings, color, stroke, outer, centers, metatron, solids, solidSize, hidden }) {
     const svg = this.svg;
     svg.replaceChildren();
 
@@ -16,7 +16,10 @@ export class View2D {
     // El círculo exterior envuelve la flor: radio = anillos + 1.
     const extent = rings + 1;
     const pad = 0.25;
-    const R = extent + pad;
+    let reach = extent;
+    if (metatron) reach = Math.max(reach, 5);
+    if (solids.length) reach = Math.max(reach, solidSize);
+    const R = reach + pad;
     svg.setAttribute("viewBox", `${-R} ${-R} ${2 * R} ${2 * R}`);
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
 
@@ -44,6 +47,9 @@ export class View2D {
       this.circles.push(o);
     }
     svg.append(g);
+
+    if (metatron) svg.append(drawMetatron(stroke));
+    for (const kind of solids) svg.append(drawSolid(kind, solidSize, stroke, hidden));
 
     if (centers) {
       const dots = el("g", { fill: color });
@@ -92,6 +98,49 @@ export class View2D {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
+}
+
+const METATRON_COLOR = "#e8e6df";
+
+function drawMetatron(stroke) {
+  const g = el("g", { fill: "none", stroke: METATRON_COLOR, "stroke-opacity": 0.75 });
+  for (const p of metatronCenters()) {
+    g.append(el("circle", {
+      cx: fmt(p.x), cy: fmt(-p.y), r: 1,
+      "stroke-width": stroke * 1.2, "vector-effect": "non-scaling-stroke",
+    }));
+  }
+  for (const [a, b] of metatronLines()) {
+    g.append(el("line", {
+      x1: fmt(a.x), y1: fmt(-a.y), x2: fmt(b.x), y2: fmt(-b.y),
+      "stroke-width": stroke * 0.6, "vector-effect": "non-scaling-stroke",
+    }));
+  }
+  return g;
+}
+
+/** Proyección ortogonal (vista desde +Z) de un sólido platónico. */
+function drawSolid(kind, size, stroke, hidden) {
+  const { vertices, edges } = platonicSolid(kind, size);
+  const color = SOLIDS[kind].color;
+  const g = el("g", { stroke: color, fill: "none", "stroke-linecap": "round" });
+  // Primero las ocultas (punteadas) para que las visibles queden encima.
+  const sorted = [...edges].sort((a, b) => a.visible - b.visible);
+  for (const e of sorted) {
+    if (!e.visible && !hidden) continue;
+    const [a, b] = [vertices[e.a], vertices[e.b]];
+    const attrs = {
+      x1: fmt(a[0]), y1: fmt(-a[1]), x2: fmt(b[0]), y2: fmt(-b[1]),
+      "stroke-width": e.visible ? stroke * 1.6 : stroke * 0.9,
+      "vector-effect": "non-scaling-stroke",
+    };
+    if (!e.visible) Object.assign(attrs, { "stroke-dasharray": "4 4", "stroke-opacity": 0.7 });
+    g.append(el("line", attrs));
+  }
+  const dots = el("g", { fill: color, stroke: "none" });
+  for (const v of vertices) dots.append(el("circle", { cx: fmt(v[0]), cy: fmt(-v[1]), r: 0.05 }));
+  g.append(dots);
+  return g;
 }
 
 function el(tag, attrs) {

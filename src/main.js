@@ -1,10 +1,20 @@
 import { View2D } from "./view2d.js";
-import { hexCount } from "./geometry.js";
+import { hexCount, SOLIDS } from "./geometry.js";
 
 const $ = (id) => document.getElementById(id);
+// Casillas de los sólidos platónicos, generadas a partir de SOLIDS.
+const solidList = $("solid-list");
+for (const [kind, { name, color }] of Object.entries(SOLIDS)) {
+  const label = document.createElement("label");
+  label.innerHTML = `<input type="checkbox" data-solid="${kind}" /> <span class="swatch" style="background:${color}"></span> ${name}`;
+  solidList.append(label);
+}
+const solidBoxes = [...solidList.querySelectorAll("input")];
+
 const ui = {
+  metatron: $("metatron"), solidSize: $("solid-size"), hidden: $("hidden-edges"),
   rings: $("rings"), layout3d: $("layout3d"), color: $("color"), stroke: $("stroke"),
-  opacity: $("opacity"), outer: $("outer"), centers: $("centers"), wire: $("wire"), spin: $("spin"),
+  opacity: $("opacity"), outer: $("outer"), centers: $("centers"), wire: $("wire"), spin: $("spin"), ortho: $("ortho"),
 };
 
 const view2d = new View2D($("view2d"));
@@ -25,6 +35,11 @@ function state() {
     centers: ui.centers.checked,
     wire: ui.wire.checked,
     spin: ui.spin.checked,
+    metatron: ui.metatron.checked,
+    solids: solidBoxes.filter((b) => b.checked).map((b) => b.dataset.solid),
+    solidSize: +ui.solidSize.value,
+    hidden: ui.hidden.checked,
+    ortho: ui.ortho.checked,
   };
 }
 
@@ -74,7 +89,13 @@ async function setMode(next) {
   update();
 }
 
-for (const input of Object.values(ui)) input.addEventListener("input", update);
+for (const input of [...Object.values(ui), ...solidBoxes]) input.addEventListener("input", update);
+$("front-view").addEventListener("click", () => {
+  ui.spin.checked = false;
+  ui.ortho.checked = true;
+  update();
+  view3d?.frontView();
+});
 ui.layout3d.addEventListener("change", () => setMode(mode));
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => setMode(t.dataset.mode)));
 $("animate").addEventListener("click", () => view2d.animate());

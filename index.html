@@ -45,7 +45,7 @@
         <input id="color" type="color" value="#f2c14e" />
       </section>
 
-      <section class="only-2d">
+      <section>
         <label for="stroke">Grosor de línea <output id="stroke-out">1.5</output></label>
         <input id="stroke" type="range" min="0.25" max="5" step="0.25" value="1.5" />
       </section>
@@ -60,6 +60,26 @@
         <label><input id="centers" type="checkbox" /> Mostrar centros</label>
         <label class="only-3d"><input id="wire" type="checkbox" checked /> Malla (wireframe)</label>
         <label class="only-3d"><input id="spin" type="checkbox" checked /> Rotación automática</label>
+        <label class="only-3d"><input id="ortho" type="checkbox" /> Cámara ortográfica</label>
+      </section>
+
+      <h2>Geometría sagrada</h2>
+      <section class="checks">
+        <label><input id="metatron" type="checkbox" /> Cubo de Metatrón</label>
+        <div id="solid-list" class="checks"></div>
+      </section>
+      <section>
+        <label for="solid-size">Tamaño de los sólidos</label>
+        <select id="solid-size">
+          <option value="2">Interior (2 radios)</option>
+          <option value="4" selected>Exterior (4 radios)</option>
+        </select>
+      </section>
+      <section class="checks only-2d">
+        <label><input id="hidden-edges" type="checkbox" checked /> Aristas ocultas (punteadas)</label>
+      </section>
+      <section class="only-3d">
+        <button id="front-view">Vista frontal (proyección)</button>
       </section>
 
       <section class="only-2d">
