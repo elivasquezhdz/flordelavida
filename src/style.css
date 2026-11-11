@@ -1,0 +1,79 @@
+:root {
+  --bg: #0d0f17;
+  --panel: #161a26;
+  --text: #e8e6df;
+  --muted: #8b8fa3;
+  --accent: #f2c14e;
+  --border: #262b3b;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+body { display: flex; flex-direction: column; }
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+h1 { margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: 0.02em; }
+
+.tabs { display: flex; gap: 4px; background: var(--panel); padding: 4px; border-radius: 8px; }
+.tab {
+  background: transparent; color: var(--muted); border: 0; padding: 6px 12px;
+  border-radius: 6px; cursor: pointer; font: inherit; font-size: 0.9rem; white-space: nowrap;
+}
+.tab.active { background: var(--border); color: var(--text); }
+
+main { flex: 1; display: flex; min-height: 0; }
+
+.panel {
+  width: 260px; flex-shrink: 0; padding: 16px; overflow-y: auto;
+  background: var(--panel); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 18px;
+}
+.panel section { display: flex; flex-direction: column; gap: 6px; }
+.panel label { font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.panel output { color: var(--accent); font-variant-numeric: tabular-nums; }
+.panel .checks label { justify-content: flex-start; cursor: pointer; }
+.panel input[type="range"] { width: 100%; accent-color: var(--accent); }
+.panel input[type="color"] { width: 100%; height: 32px; border: 1px solid var(--border); background: none; border-radius: 6px; }
+.panel select, .panel button {
+  font: inherit; font-size: 0.85rem; padding: 7px 10px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+}
+.panel button { cursor: pointer; }
+.panel button:hover { border-color: var(--accent); }
+.panel h2 { margin: 4px 0 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.hint { margin: 0; font-size: 0.78rem; color: var(--muted); }
+
+body[data-mode="2d"] .only-3d,
+body[data-mode="3d"] .only-2d { display: none; }
+
+.stage { flex: 1; position: relative; min-width: 0; overflow: hidden; }
+/* El canvas siempre ocupa el contenedor (en pantallas HiDPI su tamaño
+   interno es mayor que el de CSS). */
+#view3d canvas { display: block; width: 100%; height: 100%; }
+#view2d, #view3d { position: absolute; inset: 0; width: 100%; height: 100%; }
+#view2d[hidden], #view3d[hidden] { display: none; }
+
+@media (max-width: 720px) {
+  h1 { font-size: 1rem; white-space: nowrap; }
+  .tab { padding: 6px 8px; font-size: 0.8rem; }
+  main { flex-direction: column-reverse; }
+  .panel { width: 100%; max-height: 42vh; border-right: 0; border-top: 1px solid var(--border); }
+  .stage { min-height: 50vh; }
+}

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flor de la Vida</title>
+  <link rel="stylesheet" href="src/style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <header>
+    <h1>Flor de la Vida</h1>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-mode="2d" role="tab">2D · Círculos</button>
+      <button class="tab" data-mode="3d" role="tab">3D · Esferas</button>
+    </nav>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <section>
+        <label for="rings">Anillos <output id="rings-out">2</output></label>
+        <input id="rings" type="range" min="0" max="6" step="1" value="2" />
+        <p class="hint" id="count-hint"></p>
+      </section>
+
+      <section class="only-3d">
+        <label for="layout3d">Disposición</label>
+        <select id="layout3d">
+          <option value="plane">Plano (flor en el plano)</option>
+          <option value="planes3">Tres planos ortogonales</option>
+          <option value="fcc">Red FCC (cuboctaedro)</option>
+        </select>
+      </section>
+
+      <section>
+        <label for="color">Color</label>
+        <input id="color" type="color" value="#f2c14e" />
+      </section>
+
+      <section>
+        <label for="stroke">Grosor de línea <output id="stroke-out">1.5</output></label>
+        <input id="stroke" type="range" min="0.25" max="5" step="0.25" value="1.5" />
+      </section>
+
+      <section class="only-3d">
+        <label for="opacity">Opacidad <output id="opacity-out">0.15</output></label>
+        <input id="opacity" type="range" min="0.02" max="1" step="0.01" value="0.15" />
+      </section>
+
+      <section class="checks">
+        <label class="only-2d"><input id="outer" type="checkbox" checked /> Círculo exterior</label>
+        <label><input id="centers" type="checkbox" /> Mostrar centros</label>
+        <label class="only-3d"><input id="wire" type="checkbox" checked /> Malla (wireframe)</label>
+        <label class="only-3d"><input id="spin" type="checkbox" checked /> Rotación automática</label>
+        <label class="only-3d"><input id="ortho" type="checkbox" /> Cámara ortográfica</label>
+      </section>
+
+      <h2>Geometría sagrada</h2>
+      <section class="checks">
+        <label><input id="metatron" type="checkbox" /> Cubo de Metatrón</label>
+        <div id="solid-list" class="checks"></div>
+      </section>
+      <section>
+        <label for="solid-size">Tamaño de los sólidos</label>
+        <select id="solid-size">
+          <option value="2">Interior (2 radios)</option>
+          <option value="4" selected>Exterior (4 radios)</option>
+          <option value="both">Ambos (anidados)</option>
+        </select>
+      </section>
+      <section class="checks only-2d">
+        <label><input id="hidden-edges" type="checkbox" checked /> Aristas ocultas (punteadas)</label>
+      </section>
+      <section class="checks only-3d">
+        <label><input id="metatron3" type="checkbox" checked /> Metatrón en los 3 planos ortogonales</label>
+        <label><input id="vertex-spheres" type="checkbox" checked /> Esferas en los vértices de los sólidos</label>
+      </section>
+      <section class="only-3d">
+        <button id="front-view">Vista frontal (proyección)</button>
+      </section>
+
+      <section class="only-2d">
+        <button id="animate">Animar construcción</button>
+      </section>
+
+      <section>
+        <button id="export-png">Descargar PNG</button>
+        <button id="export-svg" class="only-2d">Descargar SVG</button>
+      </section>
+    </aside>
+
+    <div class="stage">
+      <svg id="view2d" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div id="view3d" hidden></div>
+    </div>
+  </main>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
