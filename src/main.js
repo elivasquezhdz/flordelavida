@@ -13,6 +13,7 @@ const solidBoxes = [...solidList.querySelectorAll("input")];
 
 const ui = {
   metatron: $("metatron"), solidSize: $("solid-size"), hidden: $("hidden-edges"),
+  metatron3: $("metatron3"), vertexSpheres: $("vertex-spheres"),
   rings: $("rings"), layout3d: $("layout3d"), color: $("color"), stroke: $("stroke"),
   opacity: $("opacity"), outer: $("outer"), centers: $("centers"), wire: $("wire"), spin: $("spin"), ortho: $("ortho"),
 };
@@ -37,7 +38,9 @@ function state() {
     spin: ui.spin.checked,
     metatron: ui.metatron.checked,
     solids: solidBoxes.filter((b) => b.checked).map((b) => b.dataset.solid),
-    solidSize: +ui.solidSize.value,
+    sizes: ui.solidSize.value === "both" ? [2, 4] : [+ui.solidSize.value],
+    metatron3: ui.metatron3.checked,
+    vertexSpheres: ui.vertexSpheres.checked,
     hidden: ui.hidden.checked,
     ortho: ui.ortho.checked,
   };
@@ -90,6 +93,15 @@ async function setMode(next) {
 }
 
 for (const input of [...Object.values(ui), ...solidBoxes]) input.addEventListener("input", update);
+// Al activar el Cubo de Metatrón se muestran también los sólidos que contiene,
+// anidados en sus dos tamaños (cada uno se puede apagar después).
+const METATRON_SOLIDS = ["star", "cube", "octa", "ico", "dodeca"];
+ui.metatron.addEventListener("change", () => {
+  if (!ui.metatron.checked) return;
+  for (const b of solidBoxes) b.checked = METATRON_SOLIDS.includes(b.dataset.solid);
+  ui.solidSize.value = "both";
+  update();
+});
 $("front-view").addEventListener("click", () => {
   ui.spin.checked = false;
   ui.ortho.checked = true;

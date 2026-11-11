@@ -73,10 +73,15 @@
         <select id="solid-size">
           <option value="2">Interior (2 radios)</option>
           <option value="4" selected>Exterior (4 radios)</option>
+          <option value="both">Ambos (anidados)</option>
         </select>
       </section>
       <section class="checks only-2d">
         <label><input id="hidden-edges" type="checkbox" checked /> Aristas ocultas (punteadas)</label>
+      </section>
+      <section class="checks only-3d">
+        <label><input id="metatron3" type="checkbox" checked /> Metatrón en los 3 planos ortogonales</label>
+        <label><input id="vertex-spheres" type="checkbox" checked /> Esferas en los vértices de los sólidos</label>
       </section>
       <section class="only-3d">
         <button id="front-view">Vista frontal (proyección)</button>
