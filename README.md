@@ -17,7 +17,11 @@ python3 -m http.server 8000
 # abre http://localhost:8000  (o http://localhost:8000/#3d)
 ```
 
-También funciona tal cual en GitHub Pages.
+## Despliegue
+
+Publicado en GitHub Pages: https://elivasquezhdz.github.io/flordelavida/
+
+El workflow `.github/workflows/pages.yml` copia el sitio a la rama `gh-pages` en cada push a `main` (o manualmente desde la pestaña *Actions*).
 
 ## Estructura
 
