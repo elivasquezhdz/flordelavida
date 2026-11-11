@@ -260,6 +260,33 @@ export class View3D {
     for (const mat of this.lineMaterials ?? []) mat.resolution.copy(size);
   }
 
+  /**
+   * PNG de la vista actual, renderizado a mayor resolución (lado mayor ≈
+   * `target` px) sobre fondo `background`.
+   */
+  async exportPNG(target = 2048, background = "#0d0f17") {
+    const r = this.renderer;
+    const prev = r.getPixelRatio();
+    const size = r.getSize(new THREE.Vector2());
+    const ratio = Math.min(4, Math.max(prev, target / Math.max(size.x, size.y)));
+    r.setPixelRatio(ratio);
+    r.setSize(size.x, size.y, false);
+    r.render(this.scene, this.camera);
+
+    // Copiar en el mismo tick del render (el búfer WebGL no se conserva).
+    const out = document.createElement("canvas");
+    out.width = r.domElement.width;
+    out.height = r.domElement.height;
+    const ctx = out.getContext("2d");
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(r.domElement, 0, 0);
+
+    r.setPixelRatio(prev);
+    r.setSize(size.x, size.y, false);
+    return new Promise((res) => out.toBlob(res, "image/png"));
+  }
+
   start() {
     if (this.running) return;
     this.running = true;

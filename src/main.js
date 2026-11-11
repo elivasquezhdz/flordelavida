@@ -1,4 +1,4 @@
-import { View2D } from "./view2d.js";
+import { View2D, download } from "./view2d.js";
 import { hexCount, SOLIDS } from "./geometry.js";
 
 const $ = (id) => document.getElementById(id);
@@ -112,5 +112,9 @@ ui.layout3d.addEventListener("change", () => setMode(mode));
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => setMode(t.dataset.mode)));
 $("animate").addEventListener("click", () => view2d.animate());
 $("export-svg").addEventListener("click", () => view2d.exportSVG());
+$("export-png").addEventListener("click", async () => {
+  if (mode === "2d") return view2d.exportPNG();
+  if (view3d) download(await view3d.exportPNG(), "flor-de-la-vida-3d.png");
+});
 
 setMode(location.hash === "#3d" ? "3d" : "2d");

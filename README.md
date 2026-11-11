@@ -2,11 +2,12 @@
 
 Visualizador web de la **Flor de la Vida** en 2D y 3D.
 
-- **2D · Círculos** — círculos de igual radio sobre una red hexagonal, cada uno pasando por el centro de sus vecinos. Anillos 0–6 (1 → Semilla de la Vida con 7 círculos → Flor de la Vida con 19 …), círculo exterior, animación de la construcción y exportación a SVG.
+- **2D · Círculos** — círculos de igual radio sobre una red hexagonal, cada uno pasando por el centro de sus vecinos. Anillos 0–6 (1 → Semilla de la Vida con 7 círculos → Flor de la Vida con 19 …), círculo exterior, animación de la construcción y exportación a SVG y PNG.
 - **3D · Esferas** — esferas translúcidas (Three.js) con tres disposiciones:
   - *Plano*: la flor clásica hecha de esferas.
   - *Tres planos ortogonales*: la flor replicada en los planos XY, XZ e YZ.
   - *Red FCC (cuboctaedro)*: empaquetamiento compacto de esferas en capas cuboctaédricas (1, 13, 55, 147 …).
+  - Exportación a PNG de la vista actual (≈2048 px).
 
 - **Geometría sagrada** (en 2D y 3D):
   - *Cubo de Metatrón*: los 13 círculos del Fruto de la Vida y las 78 líneas que unen sus centros. Al activarlo se muestran también los sólidos que contiene, anidados en tamaño interior y exterior. En 3D sus 13 esferas aparecen en los tres planos ortogonales (XY, XZ e YZ).
