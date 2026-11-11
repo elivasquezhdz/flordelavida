@@ -92,12 +92,46 @@ export class View2D {
     const clone = this.svg.cloneNode(true);
     clone.setAttribute("xmlns", NS);
     const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type: "image/svg+xml" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "flor-de-la-vida.svg";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    download(blob, "flor-de-la-vida.svg");
   }
+
+  /**
+   * PNG cuadrado de `size` px sobre fondo `background`. El SVG se dibuja al
+   * tamaño en pantalla y se escala al raster, así que los grosores de línea
+   * guardan la misma proporción que se ve en pantalla.
+   */
+  async exportPNG(size = 2048, background = "#0d0f17") {
+    const side = Math.min(this.svg.clientWidth, this.svg.clientHeight) || 800;
+    const clone = this.svg.cloneNode(true);
+    clone.setAttribute("xmlns", NS);
+    clone.setAttribute("width", side);
+    clone.setAttribute("height", side);
+    const url = URL.createObjectURL(
+      new Blob([new XMLSerializer().serializeToString(clone)], { type: "image/svg+xml" }),
+    );
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = background;
+      ctx.fillRect(0, 0, size, size);
+      ctx.drawImage(img, 0, 0, size, size);
+      download(await new Promise((r) => canvas.toBlob(r, "image/png")), "flor-de-la-vida.png");
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+}
+
+export function download(blob, filename) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 const METATRON_COLOR = "#e8e6df";
